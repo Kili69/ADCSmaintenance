@@ -54,6 +54,8 @@ possibility of such damages
     Version 0.1.20230330
         Adding comments [AL]
         If the export of certificates failed, no certificates will be deleted from database
+    Version 0.1.20230912
+        fixed a error while writing the eventlog entry
 #>
 param(
     # alternate configuration file name
@@ -108,7 +110,7 @@ if ([System.Diagnostics.EventLog]::SourceExists($eventSource) -eq $false) {
 if ($config.RemoveCertificatesAfter -gt 0) {
     #collect all expired certificates based on the RemoveCertificatesAfter parameter
     try {
-        $certs = Get-AdcsDatabaseRow -CertificationAuthority $config.CertificationAuthority -Table issued -Filter "notafter -lt $((Get-date).AddMonths($config.RemoveCertificatesAfter))"
+        $certs = Get-AdcsDatabaseRow -CertificationAuthority $config.CertificationAuthority -Table issued -Filter "notafter -lt $((Get-date).AddMonths(-$config.RemoveCertificatesAfter))"
         # it is possible to store the certificates on a file share  before it will be deleted
         if ($config.RemoveCertificatesExportBeforeDelete) {
             foreach ($cert in $certs ) {
@@ -116,8 +118,8 @@ if ($config.RemoveCertificatesAfter -gt 0) {
             }
         }
         $certs | Remove-AdcsDatabaseRow
-        Write-Host "$($certs.Count) removed from the database"
-        Write-EventLog Application -Source $eventSource -EventId 1004 -EntryType Information -Message "$($certs.Count) removed from the database"
+        Write-Host "$($certs.Count) certificates removed from the database"
+        Write-EventLog Application -Source $eventSource -EventId 1004 -EntryType Information -Message "$($certs.Count) certificates removed from the database"
     }
     catch {
         Write-Host "A error occurs: $($Error[0]) while removeing certificates from database"
@@ -150,8 +152,8 @@ if ($config.RemovePendingRequestAfter -gt 0) {
 if ($config.RemoveFailedRequestsAfter -gt 0) {
     $RemoveRowsBefore = (Get-Date).AddDays($config.RemoveFailedRequestsAfter)
     try {
-        $failedRequests = Get-CertificationAuthority $config.CertificationAuthority | Get-FailedRequest -Filter "Request.SubmittedWhen -lt $RemoveRowsBefore"
-        Write-Eventlog -Source $eventSource -EventId "1003" -Message "Removing $($failedRequests.Count) Failed Requests" -EntryType Information
+        $failedRequests = Get-FailedRequest -CertificationAuthority $config.CertificationAuthority -Filter "Request.SubmittedWhen -lt $RemoveRowsBefore"
+        Write-Eventlog Application -Source $eventSource -EventId "1003" -Message "Removing $($failedRequests.Count) Failed Requests" -EntryType Information
         $failedRequests | Remove-AdcsDatabaseRow
     }
     catch {
@@ -159,4 +161,5 @@ if ($config.RemoveFailedRequestsAfter -gt 0) {
         Write-EventLog Application -Source $eventSource -EventId 3 -EntryType Error -Message^"A error occurs while $($Error[0]) while removing filed requests"
     }
 }
+break
 #endregion
