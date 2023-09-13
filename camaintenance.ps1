@@ -70,7 +70,7 @@ if (!(Get-Module -ListAvailable -Name PSPKI)) {
 } 
 Import-Module -Name PSPKI
 
-$env:ScriptVersion = "0.1.230330" #Script Version <major>.<minor>.<date of change>
+$env:ScriptVersion = "0.1.230913" #Script Version <major>.<minor>.<date of change>
 $_configfileVersion = "0.1.230322"
 
 $eventSource = "CAMaintenance"
@@ -161,5 +161,4 @@ if ($config.RemoveFailedRequestsAfter -gt 0) {
         Write-EventLog Application -Source $eventSource -EventId 3 -EntryType Error -Message^"A error occurs while $($Error[0]) while removing filed requests"
     }
 }
-break
 #endregion
